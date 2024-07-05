@@ -14,13 +14,44 @@ migrate = Migrate(app, db)
 
 db.init_app(app)
 
-@app.route('/messages')
+@app.route('/messages', methods=['GET', 'POST'])
 def messages():
-    return ''
+    messages = Message.query.order_by(Message.created_at).all()
+    
+    if request.method == 'GET':
+        return [m.to_dict() for m in messages], 200
 
-@app.route('/messages/<int:id>')
+    elif request.method == 'POST':
+        data = request.get_json()
+        new_message = Message(
+            body=data.get('body'),
+            username=data.get('username')
+        )
+        db.session.add(new_message)
+        db.session.commit()
+
+        return new_message.to_dict(), 201
+    
+
+@app.route('/messages/<int:id>', methods=['PATCH', 'DELETE'])
 def messages_by_id(id):
-    return ''
+    message = Message.query.filter(Message.id == id).first()
+    
+    if request.method == 'PATCH':
+        data = request.get_json()
+        for attr in data:
+            setattr(message, attr, data.get(attr))
+        db.session.add(message)
+        db.session.commit()
+
+        return message.to_dict(), 200
+    
+    elif request.method == 'DELETE':
+        db.session.delete(message)
+        db.session.commit()
+        
+        return {}, 204
+
 
 if __name__ == '__main__':
     app.run(port=5555)
